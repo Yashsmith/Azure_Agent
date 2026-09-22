@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  --ubs-white: #FFFFFF;
+  --ubs-paper: #FCFCFB;
+  --ubs-chalk: #F4F3EE;
+  --ubs-mist: #EDECE7;
+  --ubs-ink: #161616;
+  --ubs-slate: #5B5B5B;
+  --ubs-slate-muted: #5B5B5B99;
+  --ubs-line: #E2E0D9;
+  --ubs-line-strong: #C9C6BC;
+
+  --ubs-red: #E60000;
+  --ubs-red-dark: #A30000;
+  --ubs-red-tint: #FDECEC;
+  --ubs-red-tint-strong: #F9CFCF;
+  --ubs-red-glow: rgba(230,0,0,0.35);
+  --ubs-red-glow-soft: rgba(230,0,0,0.16);
+
+  --signal-green: #0F8A4B;
+  --signal-green-tint: #E7F5EC;
+  --signal-blue: #0057B8;
+  --signal-blue-tint: #E8F0FA;
+  --signal-amber: #B27000;
+  --signal-amber-tint: #FBF1DC;
+
+  --shadow-01: 0 1px 2px rgba(22,22,22,0.05);
+  --shadow-02: 0 8px 24px rgba(22,22,22,0.08), 0 2px 6px rgba(22,22,22,0.05);
+  --shadow-03: 0 20px 48px rgba(22,22,22,0.16), 0 4px 12px rgba(22,22,22,0.08);
+  --shadow-live: 0 0 0 1px var(--ubs-red), 0 0 32px var(--ubs-red-glow-soft);
+
+  --glass-bg: rgba(252,252,251,0.86);
+  --glass-blur: blur(20px) saturate(1.4);
+
+  --focus-ring: 0 0 0 2px var(--ubs-paper), 0 0 0 4px var(--ubs-red);
+  
+  --font-interface: "Inter", "Suisse Int'l", "Neue Haas Grotesk Text", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-interface);
+  background-color: var(--ubs-paper);
+  color: var(--ubs-ink);
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for high-precision fintech feel */
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Glass styling */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.live-pulse {
+  animation: liveGlowPulse 2.2s infinite ease-in-out;
+}
+
+@keyframes liveGlowPulse {
+  0% {
+    box-shadow: 0 0 0px rgba(230,0,0,0.0);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(230,0,0,0.35);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(230,0,0,0.0);
+  }
+}
+
+.edge-pulse {
+  stroke-dasharray: 8 6;
+  animation: edgeDash 1.2s linear infinite;
+}
+
+@keyframes edgeDash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* Custom crisp scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ubs-line-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ubs-slate);
+}
