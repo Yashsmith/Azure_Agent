@@ -34,13 +34,35 @@ Completed and verified in the current migration slice (`npm run lint`, `npm run 
 - Loading, empty, error, disconnected, permission-denied, stale, and command-failure UI states, all covered by tests.
 - Desktop and narrow viewport screenshots for both modes captured under `e2e/screenshots/` as the visual baseline; browser smoke asserts zero uncaught page errors.
 
+Superseded by `migration_planv2.md` (executed, all phases green — see below).
+The v1 end-state held at commit `217b3e1`, then:
+
+- Single project: the sibling `the-deck-—-agentic-scrum-control-plane` project
+  is deleted. The Control Plane view lives at
+  `src/views/control-plane/` (pure `ControlPlaneView` + connected
+  `WorkspaceControlPlaneView`), moved with `git mv` history intact.
+- One `npm install`, one React 19.3.0, pruned manifest (`express`,
+  `@google/genai`, `dotenv`, `tsx`, `@types/express` removed as provably unused).
+- Host-owned cascade: sibling utilities/keyframes merged into `src/index.css`;
+  sibling entry/CSS deleted.
+- Lazy-split views: entry chunk ~994 kB (was ~1,208 kB) + separate
+  `WorkspaceControlPlaneView` chunk ~215 kB.
+- Backend seam: `createRepositoryFromConfig()`, documented `VITE_*` env,
+  `docs/backend-contract.md`, `contracts/openapi.workspace.stub.yaml`.
+- Final gates: `lint` clean, 60/60 vitest, `vite build`, 4/4 Playwright,
+  screenshots reviewed with no unintended delta.
+
 Still required before calling the migration complete:
 
-- Backend contract and generated client (Phase 6: OpenAPI document, typed client generation, CI schema-drift detection) once a real backend exists.
-- Full packaging of the Control Plane view into the host source tree or a local workspace module (the single adapter boundary is in place; the sibling project still exists on disk).
+- Real backend implementation against the contract (OpenAPI stub →
+  authoritative spec, typed client generation, CI schema-drift detection).
 - Screenshot-comparison CI on top of the captured baselines, plus reduced-motion and full keyboard-path audits beyond the mode tabs.
 
 ## Current State
+
+> Historical snapshot of the pre-migration prototype. As of `migration_planv2.md`,
+> there is one project, one shared store, and no sibling directory. The risks
+> below are retained as the record of what was fixed.
 
 The `frontend/agentic-scrum-control-plane` project currently hosts the combined app and directly imports the sibling Control Plane app from `the-deck-—-agentic-scrum-control-plane`.
 
@@ -325,7 +347,13 @@ Tasks:
 6. Add error, loading, empty, disconnected, permission-denied, and stale-data states.
 7. Add observability hooks for command failures and event stream health.
 
-**Exit criteria:** The frontend can be built, tested, and deployed from one project root without sibling-project knowledge.
+ **Exit criteria:** The frontend can be built, tested, and deployed from one project root without sibling-project knowledge.
+
+> **Satisfied by `migration_planv2.md` (Phases 2–3).** The sibling project is
+> deleted; the view lives at `src/views/control-plane/`; one install, one
+> React, one HTML entry. Items 5–7 were already satisfied in the v1 slice
+> (centralized simulation, full resilience states, command/stream
+> observability via provider state).
 
 ## Testing Strategy
 
