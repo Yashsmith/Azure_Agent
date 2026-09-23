@@ -9,11 +9,6 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-        // Single React copy across the host and the sibling Control Plane tree.
-        'react': path.resolve(__dirname, 'node_modules/react'),
-        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
-        'motion': path.resolve(__dirname, 'node_modules/motion'),
-        'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
       },
     },
     server: {

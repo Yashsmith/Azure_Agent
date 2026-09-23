@@ -295,7 +295,10 @@ Operations:
    Mirror the removal in `tsconfig.json` `paths` for `motion/*` and
    `lucide-react` (keep `@/*`).
 3. Fresh-install proof: `rm -rf node_modules package-lock.json &&
-   npm install` (allow time), then full gate.
+   npm install` (allow time), then full gate. Known pre-existing condition:
+   stock `npm install` fails on peer resolution (`vite@8` vs vitest's
+   peer ranges — predates this migration); use `npm install --legacy-peer-deps`
+   and record it. Do not "fix" by upgrading (see Non-goals).
 
 Gates:
 
@@ -304,7 +307,10 @@ Gates:
 - Prune proof: `npm ls express @google/genai dotenv tsx` errors (not installed);
   the pre-prune grep is still empty on the final tree.
 - `tsc` proves alias removal broke nothing (it type-checks resolution too).
-- e2e green + screenshots unchanged vs Phase 2.
+- e2e green + screenshots unchanged vs Phase 2. Note: the first e2e run on
+  a fresh `node_modules` may time out while Vite cold-optimizes dependencies;
+  a rerun with a warm cache is the valid gate (verify a rerun passes rather
+  than debugging a cold-cache timeout as a code break).
 
 Rollback: restore the sibling dir from git (`git checkout -- <dir>` covers
 tracked files; `node_modules` was never tracked — reinstall is the fix, not

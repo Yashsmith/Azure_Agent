@@ -1,6 +1,0 @@
-{
-  "name": "The Deck — Agentic Scrum Control Plane",
-  "description": "A single-screen command surface for watching and directing AI agents running an end-to-end SDLC.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -15,12 +15,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "motion/*": [
-        "./node_modules/motion/*"
-      ],
-      "lucide-react": [
-        "./node_modules/lucide-react"
       ]
     },
     "isolatedModules": true,
