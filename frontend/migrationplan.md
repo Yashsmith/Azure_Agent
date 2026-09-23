@@ -13,6 +13,27 @@ Turn the current two-UI prototype into one maintainable, backend-agnostic fronte
 
 This plan is intentionally incremental. Each phase leaves the app runnable and has a verification gate.
 
+## Implementation Status
+
+Completed in the current migration slice:
+
+- Vitest test harness and test scripts.
+- Immutable workspace event reducer with duplicate/stale event protection.
+- Canonical workspace types, commands, and selectors.
+- Mock repository and repository contract.
+- HTTP snapshot/command repository with SSE subscription boundary.
+- Typed runtime configuration for mock versus HTTP/SSE transport.
+- Shared workspace store/provider mounted at the host composition root.
+- GenUI phase transitions publishing canonical workspace events.
+- Eight automated tests passing, plus type-check and production build.
+
+Still required before calling the migration complete:
+
+- Replace the Control Plane's local `ScrumContext` data ownership with the shared provider.
+- Migrate remaining GenUI entities, commands, and transcript state to canonical models.
+- Add component/browser integration tests for both views using one shared snapshot.
+- Add loading, error, disconnected, permission, and stale-data UI states.
+
 ## Current State
 
 The `frontend/agentic-scrum-control-plane` project currently hosts the combined app and directly imports the sibling Control Plane app from `the-deck-—-agentic-scrum-control-plane`.

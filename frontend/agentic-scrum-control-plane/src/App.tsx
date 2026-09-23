@@ -19,8 +19,16 @@ import { RevealDrawer } from './components/drawer/RevealDrawer';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ToastCaption } from './components/common/ToastCaption';
 import ControlPlaneApp from '../../the-deck-—-agentic-scrum-control-plane/src/App';
+import { MockWorkspaceRepository } from './repositories/MockWorkspaceRepository';
+import { WorkspaceProvider } from './state/WorkspaceProvider';
+import { useWorkspace } from './state/WorkspaceProvider';
+import type { WorkspaceSnapshot } from './domain/types';
+import { readConfig } from './app/config';
+import { HttpWorkspaceRepository } from './repositories/HttpWorkspaceRepository';
+import type { WorkspaceRepository } from './repositories/WorkspaceRepository';
 
 type WorkspaceMode = 'genui' | 'control-plane';
+const appConfig = readConfig();
 
 function WorkspaceSwitcher({ mode, onChange }: { mode: WorkspaceMode; onChange: (mode: WorkspaceMode) => void }) {
   return (
@@ -54,6 +62,7 @@ function WorkspaceSwitcher({ mode, onChange }: { mode: WorkspaceMode; onChange: 
 }
 
 function GenUIApp() {
+  const { publishEvent } = useWorkspace();
   // Phase Progression State
   const [currentActivePhase, setCurrentActivePhase] = useState<PhaseId>('kickoff');
   const [viewingPhase, setViewingPhase] = useState<PhaseId>('kickoff');
@@ -80,7 +89,15 @@ function GenUIApp() {
     setCurrentActivePhase(nextPhase);
     setViewingPhase(nextPhase);
     setToastMessage(reasonToast);
-  }, [currentActivePhase]);
+    publishEvent({
+      eventId: `phase-${Date.now()}-${nextPhase}`,
+      workspaceId: appConfig.workspaceId,
+      occurredAt: new Date().toISOString(),
+      version: Date.now(),
+      type: 'phase.changed',
+      payload: { phaseId: nextPhase },
+    });
+  }, [currentActivePhase, publishEvent]);
 
   // Handler for Kickoff submission
   const handleKickoffSubmit = (briefTitle: string, briefContent: string) => {
@@ -144,11 +161,11 @@ function GenUIApp() {
     setTotalPRs((prev) => prev + 1);
     setPrData((prev) => {
       const copy = [...prev];
-      const last = copy[copy.length - 1];
-      if (last) {
-        last.prs += 1;
-      }
-      return copy;
+      const lastIndex = copy.length - 1;
+      if (lastIndex < 0) return copy;
+      return copy.map((entry, index) =>
+        index === lastIndex ? { ...entry, prs: entry.prs + 1 } : entry,
+      );
     });
     advanceToPhase('ship', 'Release v3.0.0 ratified — Sprint 03 shipped to production');
   };
@@ -373,9 +390,14 @@ function GenUIApp() {
 
 export default function App() {
   const [mode, setMode] = useState<WorkspaceMode>('genui');
+  const [repository] = useState<WorkspaceRepository>(() =>
+    appConfig.transport === 'http-sse'
+      ? new HttpWorkspaceRepository(appConfig.apiBaseUrl)
+      : new MockWorkspaceRepository(INITIAL_WORKSPACE),
+  );
 
   return (
-    <>
+    <WorkspaceProvider workspaceId={appConfig.workspaceId} repository={repository}>
       <WorkspaceSwitcher mode={mode} onChange={setMode} />
       {mode === 'genui' ? (
         <div className="pt-11">
@@ -386,6 +408,15 @@ export default function App() {
           <ControlPlaneApp />
         </div>
       )}
-    </>
+    </WorkspaceProvider>
   );
 }
+
+const INITIAL_WORKSPACE: WorkspaceSnapshot = {
+  workspaceId: appConfig.workspaceId,
+  version: 1,
+  phaseId: 'kickoff',
+  agents: [],
+  messages: [],
+  processedEventIds: [],
+};
