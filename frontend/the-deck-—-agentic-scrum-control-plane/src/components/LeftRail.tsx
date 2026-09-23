@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion, LayoutGroup } from 'motion/react';
 import { useScrum } from '../context/ScrumContext';
-import { INITIAL_SKILLS } from '../data/mockData';
 import { Sparkles, Layers, Cpu } from 'lucide-react';
 import { Agent } from '../types';
 
 export const LeftRail: React.FC = () => {
-  const { agents, selectedAgent, setSelectedAgent } = useScrum();
+  const { agents, selectedAgent, setSelectedAgent, skills } = useScrum();
 
   return (
     <aside className="w-[232px] bg-[#F4F3EE] border-r border-[#E2E0D9] flex flex-col shrink-0 select-none overflow-y-auto overflow-x-hidden">
@@ -143,16 +142,16 @@ export const LeftRail: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {INITIAL_SKILLS.map(skill => (
+          {skills.map(skill => (
             <div key={skill.id} className="flex items-center justify-between text-[11.5px] text-[#5B5B5B] py-0.5">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-[#161616]">
-                  {skill.isSolid ? '▪' : '▫'}
+                  {skill.claimedCount > 0 ? '▪' : '▫'}
                 </span>
                 <span className="font-medium text-[#161616]">{skill.name}</span>
               </div>
               <span className="text-[10.5px] mono font-semibold text-[#5B5B5B] bg-[#EDECE7] px-1.5 py-0.2 rounded-[3px]">
-                ×{skill.activeCount}
+                ×{skill.claimedCount}
               </span>
             </div>
           ))}

@@ -234,7 +234,23 @@ export const DelegationCanvas: React.FC<DelegationCanvasProps> = ({ isMini = fal
           const isLive = node.agentRef?.isLive;
 
           if (node.type === 'agent') {
-            const agent = node.agentRef!;
+            const agent = node.agentRef;
+            if (!agent) {
+              return (
+                <div
+                  key={node.id}
+                  style={{
+                    left: `${node.x}px`,
+                    top: `${node.y}px`,
+                    opacity,
+                  }}
+                  className="absolute w-[185px] p-2.5 rounded-[12px] bg-[#F4F3EE] border border-dashed border-[#C9C6BC] pointer-events-none"
+                >
+                  <span className="font-bold text-[12.5px] text-[#5B5B5B] truncate">{node.label}</span>
+                  <div className="text-[10px] text-[#8E8E8E] font-medium">Unavailable in snapshot</div>
+                </div>
+              );
+            }
             return (
               <motion.div
                 key={node.id}

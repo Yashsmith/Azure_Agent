@@ -18,6 +18,11 @@ export const MeetTab: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
 
   // Filter messages based on search query and message type
   const filteredMessages = messages.filter(msg => {
@@ -37,7 +42,8 @@ export const MeetTab: React.FC = () => {
   const handleCopyCode = (id: string, code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (

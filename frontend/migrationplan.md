@@ -15,24 +15,30 @@ This plan is intentionally incremental. Each phase leaves the app runnable and h
 
 ## Implementation Status
 
-Completed in the current migration slice:
+Completed and verified in the current migration slice (`npm run lint`, `npm run test` — 58 passing, `npm run build`, `npm run test:e2e` — 4 passing, all green):
 
-- Vitest test harness and test scripts.
-- Immutable workspace event reducer with duplicate/stale event protection.
-- Canonical workspace types, commands, and selectors.
-- Mock repository and repository contract.
-- HTTP snapshot/command repository with SSE subscription boundary.
-- Typed runtime configuration for mock versus HTTP/SSE transport.
-- Shared workspace store/provider mounted at the host composition root.
-- GenUI phase transitions publishing canonical workspace events.
-- Eight automated tests passing, plus type-check and production build.
+- Vitest test harness and test scripts, plus jsdom component tests and a Playwright browser smoke suite (`test:e2e`).
+- Immutable workspace event reducer with duplicate/stale event protection, entity upserts for previously unknown ids, same-version convergence, and bounded processed-event history.
+- Canonical workspace types, commands, and selectors. Events now cover agents, messages, phases, artifacts, meets, metrics, skills, sprints, and delegation edges. Commands cover sprint start, phase advance, task reassign, message create, SME directive submit, PRD accept, debate inject, and consensus force, with shared validation used by both repositories.
+- Deterministic workspace fixtures: empty, active sprint, blocked agent, completed sprint, and partially accepted artifact.
+- Runtime snapshot validation at the HTTP repository boundary.
+- Mock repository and shared repository contract suite run against both mock and HTTP repositories.
+- HTTP snapshot/command repository with SSE subscription boundary, request timeouts, typed permission/conflict/rate-limit errors, reconnect with backoff, and duplicate/malformed event guards.
+- Centralized demo simulation adapter with a single loop owned by the shell; all view-level data-generation timers removed (remaining timers are presentational with cleanup).
+- Typed runtime configuration for mock versus HTTP/SSE/WebSocket transport.
+- Shared workspace store/provider mounted at the host composition root. The provider loads before subscribing (no load/subscribe race), maps failures to loading/error/permission-denied/disconnected/stale states, keeps cached state visible on disconnect, and surfaces command failures.
+- Host shell boundary: `WorkspaceShell` composition root, `ViewRegistry` view map, `views/GenUIView` and `views/ControlPlaneView`. The sibling Control Plane is consumed through one adapter module; React is aliased to a single copy.
+- GenUI reads agents, skills, transcript, PR metrics, and phase from the shared snapshot and issues canonical commands; only navigation, overlays, and presentational flags stay local.
+- Control Plane `ScrumContext` derives agents/messages/meets/artifacts/sprints/edges/skills from the shared snapshot and routes debate, SME intervention, consensus, reassignment, and manual simulation steps through repository commands.
+- No view imports `INITIAL_*` data or calls browser network APIs. Static GenUI reference documents live in view-owned content, not the repository seed layer.
+- Loading, empty, error, disconnected, permission-denied, stale, and command-failure UI states, all covered by tests.
+- Desktop and narrow viewport screenshots for both modes captured under `e2e/screenshots/` as the visual baseline; browser smoke asserts zero uncaught page errors.
 
 Still required before calling the migration complete:
 
-- Replace the Control Plane's local `ScrumContext` data ownership with the shared provider.
-- Migrate remaining GenUI entities, commands, and transcript state to canonical models.
-- Add component/browser integration tests for both views using one shared snapshot.
-- Add loading, error, disconnected, permission, and stale-data UI states.
+- Backend contract and generated client (Phase 6: OpenAPI document, typed client generation, CI schema-drift detection) once a real backend exists.
+- Full packaging of the Control Plane view into the host source tree or a local workspace module (the single adapter boundary is in place; the sibling project still exists on disk).
+- Screenshot-comparison CI on top of the captured baselines, plus reduced-motion and full keyboard-path audits beyond the mode tabs.
 
 ## Current State
 

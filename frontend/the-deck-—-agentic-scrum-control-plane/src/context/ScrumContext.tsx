@@ -1,13 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Agent, Artifact, Meet, Message, Sprint, TabType, DelegationEdge } from '../types';
-import { 
-  INITIAL_AGENTS, 
-  INITIAL_MEETS, 
-  INITIAL_MESSAGES, 
-  INITIAL_ARTIFACTS, 
-  INITIAL_SPRINTS, 
-  INITIAL_EDGES 
-} from '../data/mockData';
+import type { WorkspaceSnapshot } from '../../../agentic-scrum-control-plane/src/domain/types';
+import type { CommandResult, WorkspaceCommand } from '../../../agentic-scrum-control-plane/src/domain/commands';
+import type { WorkspaceAgent, WorkspaceMessage, WorkspaceMeet, WorkspaceArtifact, WorkspaceSprint, WorkspaceEdge, WorkspaceSkill } from '../../../agentic-scrum-control-plane/src/domain/types';
 
 interface ScrumContextType {
   activeTab: TabType;
@@ -29,6 +24,7 @@ interface ScrumContextType {
   selectedSprint: Sprint;
   setSelectedSprintId: (id: string) => void;
   edges: DelegationEdge[];
+  skills: WorkspaceSkill[];
   isSimulating: boolean;
   toggleSimulation: () => void;
   stepSimulation: () => void;
@@ -48,76 +44,288 @@ interface ScrumContextType {
 
 const ScrumContext = createContext<ScrumContextType | undefined>(undefined);
 
-const SIMULATION_SCRIPTS = [
-  {
-    agentId: 'agent-04',
-    name: 'Agent-04',
-    role: 'Stream Infra',
-    type: 'speech' as const,
-    text: 'Benchmarking Kafka partition rebalance under simulated link-loss between Zurich and Geneva. Latency impact is bounded to 3.4ms with local RocksDB fallback.',
-    codeSnippet: 'val rocksConfig = new Options().setCreateIfMissing(true).setCompressionType(CompressionType.LZ4_COMPRESSION);'
-  },
-  {
-    agentId: 'agent-06',
-    name: 'Agent-06',
-    role: 'QA & Chaos',
-    type: 'debate_challenge' as const,
-    text: 'Caution: Jepsen test suite injected 30% packet loss during Raft leader re-election. Consensus held, but commit round-trip spiked to 19.8ms — dangerously close to our 20ms ceiling.',
-    isContradiction: true
-  },
-  {
-    agentId: 'agent-03',
-    name: 'Agent-03',
-    role: 'Backend Lead',
-    type: 'speech' as const,
-    text: 'We can mitigate the 19.8ms jitter by enabling TCP nodelay on gRPC multiplex channels and pinning the Raft heartbeat to 15ms. Let me deploy the test flag.'
-  },
-  {
-    agentId: 'agent-05',
-    name: 'Agent-05',
-    role: 'Database',
-    type: 'speech' as const,
-    text: 'PostgreSQL partition pruning confirms zero scanned blocks on yesterday\'s partitions during current day order queries. Execution plan cost dropped 84%.'
-  },
-  {
-    agentId: 'agent-sm',
-    name: 'ScrumMaster',
-    role: 'Scrum Master',
-    type: 'consensus' as const,
-    text: 'Heartbeat configuration verified by Agent-06. All 6 agents are in consensus. Moving PRD and Architecture status to Phase Complete.'
-  },
-  {
-    agentId: 'agent-01',
-    name: 'Agent-01',
-    role: 'Frontend Principal',
-    type: 'speech' as const,
-    text: 'Terminal UI is rendering 120,000 order ticks/sec smoothly at 60 FPS using OffscreenCanvas and WebWorker shared array buffers.'
-  }
-];
+const DEFAULT_SPARKLINE = [22, 38, 55, 60, 48, 65, 78, 85, 92, 70];
 
-export const ScrumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+function inferRole(roleTitle: string, id: string): Agent['role'] {
+  const haystack = `${roleTitle} ${id}`.toLowerCase();
+  if (haystack.includes('scrum') || id === 'agent-sm') return 'scrum_master';
+  if (haystack.includes('frontend')) return 'frontend';
+  if (haystack.includes('database') || haystack.includes('storage')) return 'database';
+  if (haystack.includes('qa') || haystack.includes('chaos')) return 'qa';
+  if (haystack.includes('sme')) return 'sme';
+  if (haystack.includes('devops')) return 'devops';
+  return 'backend';
+}
+
+function toRichAgent(item: WorkspaceAgent): Agent {
+  const role = inferRole(item.role, item.id);
+  const isLive = item.status === 'speaking';
+  const status: Agent['status'] = item.status === 'blocked'
+    ? 'evaluating'
+    : item.status === 'complete' || item.status === 'idle'
+      ? 'idle'
+      : item.status === 'active'
+        ? 'orchestrating'
+        : 'speaking';
+  return {
+    id: item.id,
+    name: item.name,
+    role,
+    roleTitle: item.role,
+    status,
+    isLive,
+    avatarNumber: item.id.replace('agent-', '').replace('agent', '').slice(0, 2) || 'SM',
+    activeTask: item.activeTask ?? 'Awaiting assignment',
+    sparkline: DEFAULT_SPARKLINE,
+    contextTokens: 80000,
+    tokensVelocity: 900,
+    model: 'gemini-2.5-flash',
+    skills: item.claimedSkill ? [item.claimedSkill] : [],
+    allocatedMemory: '2.8 GB',
+    confidenceScore: item.confidenceScore ?? 95,
+    recentTools: [],
+  };
+}
+
+function toRichMessage(item: WorkspaceMessage): Message {
+  return {
+    id: item.id,
+    meetId: item.meetId,
+    senderId: item.senderId,
+    senderName: item.senderName,
+    senderRole: item.senderId === 'sme-01' ? 'Business SME' : item.senderId === 'agent-sm' ? 'Scrum Master' : 'Developer',
+    timestamp: item.timestamp,
+    timeOffsetSec: 0,
+    text: item.text,
+    type: item.senderId === 'sme-01' ? 'sme_input' : 'speech',
+  };
+}
+
+function toRichMeet(item: WorkspaceMeet): Meet {
+  return {
+    id: item.id,
+    number: item.id.replace('meet-', ''),
+    sprintId: 'sprint-03',
+    title: item.title,
+    topic: item.title,
+    status: item.status,
+    elapsedTime: '14:32',
+    remainingTime: '04:12',
+    elapsedSec: 872,
+    remainingSec: 252,
+    participants: [],
+    consensusRate: item.consensusRate,
+    debateIntensity: item.debateIntensity,
+    heatSegments: [],
+    summary: '',
+  };
+}
+
+function toRichArtifact(item: WorkspaceArtifact): Artifact {
+  const type: Artifact['type'] = item.filename.toLowerCase().includes('arch')
+    ? 'architecture'
+    : item.filename.toLowerCase().includes('design')
+      ? 'design'
+      : 'prd';
+  return {
+    id: item.id,
+    title: item.title,
+    filename: item.filename,
+    type,
+    currentVersion: item.currentVersion,
+    status: item.status,
+    acceptedCount: item.acceptedCount,
+    totalRequired: item.totalRequired,
+    acceptedBy: [],
+    versions: [],
+    markdownContent: '',
+  };
+}
+
+function toRichSprint(item: WorkspaceSprint): Sprint {
+  return {
+    id: item.id,
+    number: item.number,
+    title: item.title,
+    goal: '',
+    phase: item.phase,
+    progress: item.progress,
+    status: item.status,
+    startDate: '',
+    targetDate: '',
+    meets: [],
+    smeReviewPoints: [],
+    standup: { yesterday: [], today: [], blockers: [] },
+    retro: { wentWell: [], toImprove: [], actionItems: [] },
+  };
+}
+
+function toRichEdge(item: WorkspaceEdge): DelegationEdge {
+  return {
+    id: item.id,
+    source: item.source,
+    target: item.target,
+    label: item.label,
+    isActive: item.isActive,
+    latencyMs: item.latencyMs,
+  };
+}
+
+const DEBATE_TEXT = 'CHALLENGE: Under asymmetric network partition, Raft node Geneva cannot distinguish between crash stop and link cut. How do we prevent stale reads without a synchronous heartbeat round-trip that violates the 20ms SLA?';
+
+const EMPTY_MEET: Meet = {
+  id: 'meet-empty',
+  number: '—',
+  sprintId: '',
+  title: 'No meet selected',
+  topic: 'Workspace is empty',
+  status: 'scheduled',
+  elapsedTime: '00:00',
+  remainingTime: '00:00',
+  elapsedSec: 0,
+  remainingSec: 0,
+  participants: [],
+  consensusRate: 0,
+  debateIntensity: 0,
+  heatSegments: [],
+  summary: 'No meet data is available for this workspace yet.',
+};
+
+const EMPTY_ARTIFACT: Artifact = {
+  id: 'artifact-empty',
+  title: 'No artifact',
+  filename: 'empty.md',
+  type: 'prd',
+  currentVersion: 'v0.0',
+  status: 'draft',
+  acceptedCount: 0,
+  totalRequired: 0,
+  acceptedBy: [],
+  versions: [],
+  markdownContent: '',
+};
+
+const EMPTY_SPRINT: Sprint = {
+  id: 'sprint-empty',
+  number: '—',
+  title: 'No sprint',
+  goal: '',
+  phase: '',
+  progress: 0,
+  status: 'active',
+  startDate: '',
+  targetDate: '',
+  meets: [],
+  smeReviewPoints: [],
+  standup: { yesterday: [], today: [], blockers: [] },
+  retro: { wentWell: [], toImprove: [], actionItems: [] },
+};
+
+const EMPTY_AGENT: Agent = {
+  id: 'agent-empty',
+  name: 'No agent',
+  role: 'backend',
+  roleTitle: 'No agent available',
+  status: 'idle',
+  isLive: false,
+  avatarNumber: '—',
+  activeTask: 'Workspace is empty',
+  sparkline: DEFAULT_SPARKLINE,
+  contextTokens: 0,
+  tokensVelocity: 0,
+  model: '',
+  skills: [],
+  allocatedMemory: '',
+  confidenceScore: 0,
+  recentTools: [],
+};
+
+export const ScrumProvider: React.FC<{ children: React.ReactNode; sharedWorkspace?: WorkspaceSnapshot; sharedExecuteCommand?: (command: WorkspaceCommand) => Promise<CommandResult> }> = ({ children, sharedWorkspace, sharedExecuteCommand }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [autopilot, setAutopilot] = useState<boolean>(true);
-  const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(INITIAL_AGENTS[1]); // Agent-03 default
-  const [meets, setMeets] = useState<Meet[]>(INITIAL_MEETS);
+  const [autopilot, setAutopilot] = useState<boolean>(false);
+  const [agents, setAgents] = useState<Agent[]>(() => (sharedWorkspace ? sharedWorkspace.agents.map(toRichAgent) : []));
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [meets, setMeets] = useState<Meet[]>(() => (sharedWorkspace ? sharedWorkspace.meets.map(toRichMeet) : []));
   const [selectedMeetId, setSelectedMeetId] = useState<string>('meet-04');
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
-  const [artifacts, setArtifacts] = useState<Artifact[]>(INITIAL_ARTIFACTS);
+  const [messages, setMessages] = useState<Message[]>(() => (sharedWorkspace ? sharedWorkspace.messages.map(toRichMessage) : []));
+  const [artifacts, setArtifacts] = useState<Artifact[]>(() => (sharedWorkspace ? sharedWorkspace.artifacts.map(toRichArtifact) : []));
   const [selectedArtifactId, setSelectedArtifactId] = useState<string>('art-01');
-  const [sprints, setSprints] = useState<Sprint[]>(INITIAL_SPRINTS);
+  const [sprints, setSprints] = useState<Sprint[]>(() => (sharedWorkspace ? sharedWorkspace.sprints.map(toRichSprint) : []));
   const [selectedSprintId, setSelectedSprintId] = useState<string>('sprint-03');
-  const [edges, setEdges] = useState<DelegationEdge[]>(INITIAL_EDGES);
-  const [isSimulating, setIsSimulating] = useState<boolean>(true);
+  const [edges, setEdges] = useState<DelegationEdge[]>(() => (sharedWorkspace ? sharedWorkspace.edges.map(toRichEdge) : []));
+  const [skills, setSkills] = useState<WorkspaceSkill[]>(() => sharedWorkspace?.skills ?? []);
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSmeModalOpen, setIsSmeModalOpen] = useState<boolean>(false);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(872);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(252);
-  const [scriptIndex, setScriptIndex] = useState<number>(0);
+  const workspaceId = sharedWorkspace?.workspaceId ?? 'workspace-demo';
 
-  const selectedMeet = meets.find(m => m.id === selectedMeetId) || meets[0];
-  const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId) || artifacts[0];
-  const selectedSprint = sprints.find(s => s.id === selectedSprintId) || sprints[0];
-  const activeAgent = agents.find(a => a.isLive) || agents[1];
+  const selectedMeet = meets.find(m => m.id === selectedMeetId) || meets[0] || EMPTY_MEET;
+  const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId) || artifacts[0] || EMPTY_ARTIFACT;
+  const selectedSprint = sprints.find(s => s.id === selectedSprintId) || sprints[0] || EMPTY_SPRINT;
+  const activeAgent = agents.find(a => a.isLive) || agents[0] || EMPTY_AGENT;
+
+  useEffect(() => {
+    if (!selectedAgent && agents.length > 0) {
+      setSelectedAgent(agents[0]);
+    } else if (selectedAgent && !agents.some(a => a.id === selectedAgent.id)) {
+      setSelectedAgent(agents[0] ?? null);
+    }
+  }, [agents, selectedAgent]);
+
+  useEffect(() => {
+    if (!sharedWorkspace) return;
+    setAgents(prev => {
+      const previous = new Map(prev.map(agent => [agent.id, agent]));
+      return sharedWorkspace.agents.map(item => {
+        const existing = previous.get(item.id);
+        const rich = toRichAgent(item);
+        return existing ? { ...existing, activeTask: rich.activeTask, confidenceScore: rich.confidenceScore, isLive: rich.isLive, status: rich.status, name: rich.name, roleTitle: rich.roleTitle } : rich;
+      });
+    });
+    setMessages(prev => {
+      const known = new Set(prev.map(message => message.id));
+      const incoming = sharedWorkspace.messages.filter(item => !known.has(item.id)).map(toRichMessage);
+      const updated = prev.map(message => {
+        const shared = sharedWorkspace.messages.find(item => item.id === message.id);
+        return shared ? { ...message, text: shared.text, timestamp: shared.timestamp } : message;
+      });
+      return incoming.length ? [...updated, ...incoming] : updated;
+    });
+    setMeets(prev => {
+      const previous = new Map(prev.map(meet => [meet.id, meet]));
+      return sharedWorkspace.meets.map(item => {
+        const existing = previous.get(item.id);
+        const rich = toRichMeet(item);
+        return existing ? { ...existing, consensusRate: rich.consensusRate, debateIntensity: rich.debateIntensity, status: rich.status, title: rich.title } : rich;
+      });
+    });
+    setArtifacts(prev => {
+      const previous = new Map(prev.map(artifact => [artifact.id, artifact]));
+      return sharedWorkspace.artifacts.map(item => {
+        const existing = previous.get(item.id);
+        const rich = toRichArtifact(item);
+        return existing ? { ...existing, status: rich.status, acceptedCount: rich.acceptedCount, totalRequired: rich.totalRequired, currentVersion: rich.currentVersion } : rich;
+      });
+    });
+    setSprints(prev => {
+      const previous = new Map(prev.map(sprint => [sprint.id, sprint]));
+      return sharedWorkspace.sprints.map(item => {
+        const existing = previous.get(item.id);
+        const rich = toRichSprint(item);
+        return existing ? { ...existing, progress: rich.progress, status: rich.status, phase: rich.phase } : rich;
+      });
+    });
+    setEdges(prev => {
+      const previous = new Map(prev.map(edge => [edge.id, edge]));
+      return sharedWorkspace.edges.map(item => {
+        const existing = previous.get(item.id);
+        const rich = toRichEdge(item);
+        return existing ? { ...existing, isActive: rich.isActive, latencyMs: rich.latencyMs } : rich;
+      });
+    });
+    setSkills(sharedWorkspace.skills);
+  }, [sharedWorkspace]);
 
   const formatTime = (totalSec: number) => {
     const mins = Math.floor(Math.abs(totalSec) / 60);
@@ -125,7 +333,8 @@ export const ScrumProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Clock tick
+  // Presentational clock only. Domain simulation lives in the centralized
+  // workspace simulation adapter; this component never generates domain data.
   useEffect(() => {
     if (!isSimulating) return;
     const interval = setInterval(() => {
@@ -135,190 +344,41 @@ export const ScrumProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(interval);
   }, [isSimulating]);
 
-  // Step simulation function
+  const manualStepIndex = useRef(0);
   const stepSimulation = useCallback(() => {
-    const item = SIMULATION_SCRIPTS[scriptIndex % SIMULATION_SCRIPTS.length];
-    setScriptIndex(prev => prev + 1);
+    manualStepIndex.current += 1;
+    void sharedExecuteCommand?.({
+      type: 'message.create',
+      workspaceId,
+      message: {
+        meetId: selectedMeetId,
+        senderId: 'agent-03',
+        senderName: 'Agent-03',
+        text: `Manual simulation step ${manualStepIndex.current}: heartbeat verified, consensus holding.`,
+        timestamp: new Date().toISOString().slice(11, 19),
+      },
+    });
+  }, [selectedMeetId, sharedExecuteCommand, workspaceId]);
 
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-
-    const newMsg: Message = {
-      id: `msg-${Date.now()}`,
-      meetId: 'meet-04',
-      senderId: item.agentId,
-      senderName: item.name,
-      senderRole: item.role,
-      timestamp: timeStr,
-      timeOffsetSec: elapsedSeconds,
-      text: item.text,
-      type: item.type,
-      codeSnippet: item.codeSnippet,
-      isContradiction: item.isContradiction
-    };
-
-    setMessages(prev => [...prev, newMsg]);
-
-    // Promote new agent as speaking/active
-    setAgents(prev =>
-      prev.map(a => {
-        const isNowLive = a.id === item.agentId;
-        const newSpark = [...a.sparkline.slice(1), Math.floor(Math.random() * 50) + 50];
-        return {
-          ...a,
-          isLive: isNowLive,
-          status: isNowLive ? 'speaking' : a.status === 'orchestrating' ? 'orchestrating' : 'idle',
-          sparkline: isNowLive ? newSpark : a.sparkline,
-          tokensVelocity: isNowLive ? Math.floor(Math.random() * 1200) + 1800 : a.tokensVelocity
-        };
-      })
-    );
-
-    // Pulse delegation edges
-    setEdges(prev =>
-      prev.map(e => {
-        const touches = e.source === item.agentId || e.target === item.agentId;
-        return {
-          ...e,
-          isActive: touches,
-          latencyMs: touches ? Math.floor(Math.random() * 10) + 4 : e.latencyMs
-        };
-      })
-    );
-
-    // Update meet heat segment
-    setMeets(prev =>
-      prev.map(m => {
-        if (m.id === 'meet-04') {
-          return {
-            ...m,
-            debateIntensity: Math.min(100, m.debateIntensity + (item.isContradiction ? 8 : -3)),
-            consensusRate: item.type === 'consensus' ? 100 : m.consensusRate
-          };
-        }
-        return m;
-      })
-    );
-  }, [scriptIndex, elapsedSeconds]);
-
-  // Automated agent conversation loop when autopilot is on and simulating
-  useEffect(() => {
-    if (!isSimulating || !autopilot) return;
-    const timeout = setTimeout(() => {
-      stepSimulation();
-    }, 7000);
-    return () => clearTimeout(timeout);
-  }, [isSimulating, autopilot, stepSimulation, scriptIndex]);
-
-  // Trigger debate manually
   const triggerDebate = () => {
-    const debateMsg: Message = {
-      id: `msg-${Date.now()}`,
-      meetId: 'meet-04',
-      senderId: 'agent-06',
-      senderName: 'Agent-06',
-      senderRole: 'QA & Chaos',
-      timestamp: '14:36:12',
-      timeOffsetSec: elapsedSeconds,
-      text: 'CHALLENGE: Under asymmetric network partition, Raft node Geneva cannot distinguish between crash stop and link cut. How do we prevent stale reads without a synchronous heartbeat round-trip that violates the 20ms SLA?',
-      type: 'debate_challenge',
-      isContradiction: true
-    };
-    setMessages(prev => [...prev, debateMsg]);
-    setAgents(prev =>
-      prev.map(a => ({
-        ...a,
-        isLive: a.id === 'agent-06',
-        status: a.id === 'agent-06' ? 'debating' : a.status
-      }))
-    );
-    setMeets(prev =>
-      prev.map(m =>
-        m.id === 'meet-04'
-          ? {
-              ...m,
-              debateIntensity: 95,
-              heatSegments: [...m.heatSegments, { minute: 15, intensity: 95, isDebate: true }]
-            }
-          : m
-      )
-    );
+    void sharedExecuteCommand?.({ type: 'debate.inject', workspaceId, meetId: selectedMeetId, text: DEBATE_TEXT });
   };
 
-  // SME Intervention
   const triggerSmeIntervention = (directive: string) => {
-    const smeMsg: Message = {
-      id: `msg-${Date.now()}`,
-      meetId: 'meet-04',
-      senderId: 'sme-01',
-      senderName: 'SME-01',
-      senderRole: 'Business SME',
-      timestamp: '14:36:45',
-      timeOffsetSec: elapsedSeconds,
-      text: `SME DIRECTIVE: "${directive}". The architecture must enforce this constraint before passing the sprint gate.`,
-      type: 'sme_input'
-    };
-    setMessages(prev => [...prev, smeMsg]);
-
-    // Scrum master acknowledges and delegates
-    setTimeout(() => {
-      const ackMsg: Message = {
-        id: `msg-${Date.now() + 1}`,
-        meetId: 'meet-04',
-        senderId: 'agent-sm',
-        senderName: 'ScrumMaster',
-        senderRole: 'Scrum Master',
-        timestamp: '14:36:58',
-        timeOffsetSec: elapsedSeconds + 12,
-        text: `Directive received from Business SME. Updating Sprint 03 Gate Criteria: "${directive}". Agent-03 and Agent-05, update the architecture specification accordingly.`,
-        type: 'consensus'
-      };
-      setMessages(prev => [...prev, ackMsg]);
-      setAgents(prev =>
-        prev.map(a => ({
-          ...a,
-          isLive: a.id === 'agent-sm',
-          status: a.id === 'agent-sm' ? 'speaking' : a.status
-        }))
-      );
-    }, 1800);
+    void sharedExecuteCommand?.({ type: 'sme.directive.submit', workspaceId, meetId: selectedMeetId, directive });
   };
 
   const forceConsensus = () => {
-    const consensusMsg: Message = {
-      id: `msg-${Date.now()}`,
-      meetId: 'meet-04',
-      senderId: 'agent-sm',
-      senderName: 'ScrumMaster',
-      senderRole: 'Scrum Master',
-      timestamp: '14:37:30',
-      timeOffsetSec: elapsedSeconds,
-      text: 'EXECUTIVE OVERRIDE: Quorum reached. All 6 developer agents have signed off on PRD v2.3 and Architecture v1.4. Gate 03 is unlocked.',
-      type: 'consensus'
-    };
-    setMessages(prev => [...prev, consensusMsg]);
-    setArtifacts(prev =>
-      prev.map(art => ({
-        ...art,
-        status: 'approved',
-        acceptedCount: 6,
-        acceptedBy: ['Agent-01', 'Agent-02', 'Agent-03', 'Agent-04', 'Agent-05', 'Agent-06']
-      }))
-    );
-    setMeets(prev =>
-      prev.map(m => (m.id === 'meet-04' ? { ...m, consensusRate: 100, debateIntensity: 20 } : m))
-    );
+    void sharedExecuteCommand?.({ type: 'consensus.force', workspaceId, meetId: selectedMeetId });
   };
 
   const reassignTask = (agentId: string, task: string) => {
-    setAgents(prev =>
-      prev.map(a => (a.id === agentId ? { ...a, activeTask: task } : a))
-    );
+    void sharedExecuteCommand?.({ type: 'agent.task.reassign', workspaceId, agentId, task });
   };
 
-  const totalMessagesToday = 142 + messages.length - INITIAL_MESSAGES.length;
+  const totalMessagesToday = messages.length;
   const activeAgentsCount = agents.filter(a => a.status !== 'idle').length;
-  const prdAcceptanceRatio = `${artifacts[0].acceptedCount}/${artifacts[0].totalRequired}`;
+  const prdAcceptanceRatio = artifacts[0] ? `${artifacts[0].acceptedCount}/${artifacts[0].totalRequired}` : '0/0';
 
   return (
     <ScrumContext.Provider
@@ -342,6 +402,7 @@ export const ScrumProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         selectedSprint,
         setSelectedSprintId,
         edges,
+        skills,
         isSimulating,
         toggleSimulation: () => setIsSimulating(!isSimulating),
         stepSimulation,
