@@ -1,5 +1,9 @@
 import { Agent, Artifact, Meet, SkillCategory, Sprint, DelegationEdge, Message } from '../types';
 
+// Repository seed data for the demo workspace. Consumed solely by
+// src/adapters/control-plane/toWorkspaceSnapshot.ts — no view file imports
+// this module (enforced by test gate).
+
 export const INITIAL_AGENTS: Agent[] = [
   {
     id: 'agent-sm',

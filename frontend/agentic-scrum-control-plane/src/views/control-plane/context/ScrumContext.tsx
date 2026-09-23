@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Agent, Artifact, Meet, Message, Sprint, TabType, DelegationEdge } from '../types';
-import type { WorkspaceSnapshot } from '../../../agentic-scrum-control-plane/src/domain/types';
-import type { CommandResult, WorkspaceCommand } from '../../../agentic-scrum-control-plane/src/domain/commands';
-import type { WorkspaceAgent, WorkspaceMessage, WorkspaceMeet, WorkspaceArtifact, WorkspaceSprint, WorkspaceEdge, WorkspaceSkill } from '../../../agentic-scrum-control-plane/src/domain/types';
+import type { WorkspaceSnapshot } from '../../../domain/types';
+import type { CommandResult, WorkspaceCommand } from '../../../domain/commands';
+import type { WorkspaceAgent, WorkspaceMessage, WorkspaceMeet, WorkspaceArtifact, WorkspaceSprint, WorkspaceEdge, WorkspaceSkill } from '../../../domain/types';
 
 interface ScrumContextType {
   activeTab: TabType;

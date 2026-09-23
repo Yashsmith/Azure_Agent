@@ -1,4 +1,4 @@
-import { INITIAL_AGENTS, INITIAL_MESSAGES, INITIAL_ARTIFACTS, INITIAL_MEETS, INITIAL_SPRINTS, INITIAL_EDGES } from '../../../../the-deck-—-agentic-scrum-control-plane/src/data/mockData';
+import { INITIAL_AGENTS, INITIAL_MESSAGES, INITIAL_ARTIFACTS, INITIAL_MEETS, INITIAL_SPRINTS, INITIAL_EDGES } from '../../views/control-plane/data/mockData';
 import type { WorkspaceSnapshot } from '../../domain/types';
 
 export function createInitialWorkspaceSnapshot(workspaceId: string): WorkspaceSnapshot {

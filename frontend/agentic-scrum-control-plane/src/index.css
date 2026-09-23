@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../the-deck-—-agentic-scrum-control-plane/src";
+@source "./views/control-plane";
 
 @layer base {
   :root {

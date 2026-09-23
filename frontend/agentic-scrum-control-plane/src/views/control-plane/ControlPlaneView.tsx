@@ -12,8 +12,8 @@ import { MeetTab } from './components/tabs/MeetTab';
 import { ArtifactsTab } from './components/tabs/ArtifactsTab';
 import { TimelineTab } from './components/tabs/TimelineTab';
 import { SmeInterventionModal } from './components/modals/SmeInterventionModal';
-import type { WorkspaceSnapshot } from '../../agentic-scrum-control-plane/src/domain/types';
-import type { CommandResult, WorkspaceCommand } from '../../agentic-scrum-control-plane/src/domain/commands';
+import type { WorkspaceSnapshot } from '../../domain/types';
+import type { CommandResult, WorkspaceCommand } from '../../domain/commands';
 
 const MainLayout: React.FC = () => {
   const { activeTab } = useScrum();
@@ -64,7 +64,7 @@ const MainLayout: React.FC = () => {
   );
 };
 
-export default function App({ workspaceSnapshot, executeCommand }: { workspaceSnapshot?: WorkspaceSnapshot; executeCommand?: (command: WorkspaceCommand) => Promise<CommandResult> }) {
+export default function ControlPlaneView({ workspaceSnapshot, executeCommand }: { workspaceSnapshot?: WorkspaceSnapshot; executeCommand?: (command: WorkspaceCommand) => Promise<CommandResult> }) {
   return (
     <ScrumProvider sharedWorkspace={workspaceSnapshot} sharedExecuteCommand={executeCommand}>
       <MainLayout />

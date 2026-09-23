@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkspaceProvider } from '../../state/WorkspaceProvider';
 import { MockWorkspaceRepository } from '../../repositories/MockWorkspaceRepository';
-import { ControlPlaneView } from './ControlPlaneView';
+import { WorkspaceControlPlaneView } from './WorkspaceControlPlaneView';
 import { activeSprintWorkspace } from '../../test/fixtures/workspaces';
 
 function renderControlPlaneView() {
   const repository = new MockWorkspaceRepository(activeSprintWorkspace('workspace-demo'));
   render(
     <WorkspaceProvider workspaceId="workspace-demo" repository={repository}>
-      <ControlPlaneView />
+      <WorkspaceControlPlaneView />
     </WorkspaceProvider>,
   );
   return repository;
