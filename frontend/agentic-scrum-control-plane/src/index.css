@@ -18,6 +18,7 @@
     --shadow-01: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
     --shadow-02: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
     --shadow-glow: 0 0 18px rgba(230, 0, 0, 0.35);
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   }
 
   body {
@@ -27,6 +28,8 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   code, pre, .font-mono {
@@ -98,5 +101,48 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ubs-slate);
+}
+
+/* Control Plane utilities, owned by the host cascade (v2 Phase 1).
+   Moved here so deleting the sibling project changes zero pixels. */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+
+.live-pulse {
+  animation: liveGlowPulse 2.2s infinite ease-in-out;
+}
+
+@keyframes liveGlowPulse {
+  0% {
+    box-shadow: 0 0 0px rgba(230,0,0,0.0);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(230,0,0,0.35);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(230,0,0,0.0);
+  }
+}
+
+.edge-pulse {
+  stroke-dasharray: 8 6;
+  animation: edgeDash 1.2s linear infinite;
+}
+
+@keyframes edgeDash {
+  to {
+    stroke-dashoffset: -28;
+  }
 }
 
