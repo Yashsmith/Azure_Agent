@@ -8,7 +8,11 @@ export const ArtifactsTab: React.FC = () => {
   const [selectedVersionIndex, setSelectedVersionIndex] = useState<number>(0);
   const [showDiffMode, setShowDiffMode] = useState<boolean>(true);
 
-  const currentVersionData = selectedArtifact.versions[selectedVersionIndex] || selectedArtifact.versions[0];
+  const versions = selectedArtifact.versions;
+  // Canonical snapshots may carry no version history (or document body).
+  // Degrade to the current-version metadata instead of crashing.
+  const currentVersionData: ArtifactVersion | null =
+    versions[selectedVersionIndex] ?? versions[0] ?? null;
 
   return (
     <div className="flex-1 flex h-full select-none bg-[#FCFCFB] overflow-hidden">
@@ -114,38 +118,44 @@ export const ArtifactsTab: React.FC = () => {
               </span>
 
               <div className="flex items-center gap-3">
-                {selectedArtifact.versions.map((ver, idx) => {
-                  const isCurrent = idx === selectedVersionIndex;
+                {currentVersionData ? (
+                  versions.map((ver, idx) => {
+                    const isCurrent = idx === selectedVersionIndex;
 
-                  return (
-                    <button
-                      key={ver.version}
-                      onClick={() => setSelectedVersionIndex(idx)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] mono font-semibold cursor-pointer transition-all ${
-                        isCurrent
-                          ? 'bg-[#FDECEC] text-[#E60000] border border-[#E60000]'
-                          : 'bg-[#F4F3EE] hover:bg-[#EDECE7] text-[#5B5B5B] border border-[#E2E0D9]'
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[#E60000]' : 'bg-[#C9C6BC]'}`} />
-                      <span>{ver.version}</span>
-                      <span className="text-[9.5px] font-sans font-normal text-[#5B5B5B]">({ver.timestamp})</span>
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={ver.version}
+                        onClick={() => setSelectedVersionIndex(idx)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] mono font-semibold cursor-pointer transition-all ${
+                          isCurrent
+                            ? 'bg-[#FDECEC] text-[#E60000] border border-[#E60000]'
+                            : 'bg-[#F4F3EE] hover:bg-[#EDECE7] text-[#5B5B5B] border border-[#E2E0D9]'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[#E60000]' : 'bg-[#C9C6BC]'}`} />
+                        <span>{ver.version}</span>
+                        <span className="text-[9.5px] font-sans font-normal text-[#5B5B5B]">({ver.timestamp})</span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <span className="px-2.5 py-1 rounded-[4px] text-[11px] mono font-semibold bg-[#F4F3EE] text-[#5B5B5B] border border-[#E2E0D9]">
+                    {selectedArtifact.currentVersion} · history unavailable in snapshot
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="text-[11px] text-[#5B5B5B] font-medium">
-              Author: <span className="font-semibold text-[#161616]">{currentVersionData.author}</span>
+              Author: <span className="font-semibold text-[#161616]">{currentVersionData?.author ?? 'Unknown'}</span>
             </div>
           </div>
         </div>
 
         {/* Document Body (Capped at 740px for clean reading) */}
         <div className="p-8 max-w-[760px] mx-auto w-full flex flex-col gap-6">
-          {/* Version Diff Box (if enabled) */}
-          {showDiffMode && (
+          {/* Version Diff Box (if enabled and history exists) */}
+          {showDiffMode && currentVersionData && (
             <div className="p-4 bg-[#FFFFFF] rounded-[10px] border border-[#E2E0D9] shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold uppercase text-[#5B5B5B]">
@@ -175,11 +185,19 @@ export const ArtifactsTab: React.FC = () => {
               ))}
             </div>
           )}
+          {showDiffMode && !currentVersionData && (
+            <div className="p-4 bg-[#FFFFFF] rounded-[10px] border border-[#E2E0D9] shadow-xs text-[12px] text-[#5B5B5B]">
+              <span className="text-[11px] font-bold uppercase">
+                {selectedArtifact.currentVersion} · {selectedArtifact.acceptedCount}/{selectedArtifact.totalRequired} accepted
+              </span>
+              <p className="mt-1">Version history is unavailable for this artifact in the current snapshot.</p>
+            </div>
+          )}
 
           {/* Rendered Document Text */}
           <article className="prose prose-sm max-w-none text-[#161616] leading-relaxed bg-[#FFFFFF] p-8 rounded-[12px] border border-[#E2E0D9] shadow-xs">
             <pre className="whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-[#161616]">
-              {selectedArtifact.markdownContent}
+              {selectedArtifact.markdownContent || 'Document body is unavailable for this artifact in the current snapshot.'}
             </pre>
           </article>
         </div>

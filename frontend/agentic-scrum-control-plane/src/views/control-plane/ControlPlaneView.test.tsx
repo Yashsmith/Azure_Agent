@@ -49,4 +49,12 @@ describe('ControlPlaneView', () => {
     fireEvent.click(screen.getByLabelText('Overview — The Command Deck'));
     expect(await screen.findByText('Started')).toBeInTheDocument();
   });
+
+  it('renders the artifacts tab without version history instead of crashing', async () => {
+    renderControlPlaneView();
+    fireEvent.click(screen.getByLabelText('Artifacts — PRD & Architecture Diffs'));
+    expect(await screen.findByText(/DOCUMENTS \(/)).toBeInTheDocument();
+    expect((await screen.findAllByText('PRD.md')).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/history unavailable in snapshot/)).toBeInTheDocument();
+  });
 });
