@@ -25,6 +25,20 @@ function toGenUIStatus(status: string): Agent['status'] {
 }
 
 /**
+ * Demo-narrative flags that the canonical seed mapping drops (the shared
+ * message model carries no UI-only fields) and this view restores for its
+ * known seed messages. If the seed ids ever change, the GenUIView
+ * SME-checkpoint test fails loudly instead of stranding the user with no
+ * way to advance past brainstorm.
+ */
+const SEED_SME_QUESTION_ID = 'msg-06';
+const SEED_SME_QUESTION_CONTEXT = 'Architecture Decision: Should we mandate Redis pub/sub with partitioned Postgres sessions for sub-50ms sync, or defer to SQLite/Local WAL for single-tenant airgap compliance?';
+const SEED_DEBATE_MESSAGE_ID = 'msg-04';
+// The demo seed reuses message ids across meets (pre-existing seed quirk),
+// so flags are scoped to the GenUI meet to avoid tagging the twin.
+const GENUI_MEET_ID = 'meet-01';
+
+/**
  * GenUI view. All workspace data comes from the shared snapshot;
  * only navigation, overlays, and presentational flags stay local.
  */
@@ -96,6 +110,10 @@ export function GenUIView() {
       avatarColor: avatarBySender.get(message.senderId) ?? '#5B5B5B',
       timestamp: message.timestamp,
       content: message.text,
+      ...(message.id === SEED_SME_QUESTION_ID && message.meetId === GENUI_MEET_ID
+        ? { isQuestionForSME: true, questionContext: SEED_SME_QUESTION_CONTEXT }
+        : {}),
+      ...(message.id === SEED_DEBATE_MESSAGE_ID && message.meetId === GENUI_MEET_ID ? { isDebate: true } : {}),
       ...(smeOverlay[message.id] ?? {}),
     }));
   }, [snapshot.messages, snapshot.agents, smeOverlay]);

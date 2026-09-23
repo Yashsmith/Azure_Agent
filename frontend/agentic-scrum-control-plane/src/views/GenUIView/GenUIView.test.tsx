@@ -4,9 +4,20 @@ import { WorkspaceProvider } from '../../state/WorkspaceProvider';
 import { MockWorkspaceRepository } from '../../repositories/MockWorkspaceRepository';
 import { GenUIView } from './GenUIView';
 import { activeSprintWorkspace } from '../../test/fixtures/workspaces';
+import { createDemoWorkspaceSnapshot } from '../../adapters/createDemoWorkspaceSnapshot';
 
 function renderGenUIView() {
   const repository = new MockWorkspaceRepository(activeSprintWorkspace('workspace-demo'));
+  render(
+    <WorkspaceProvider workspaceId="workspace-demo" repository={repository}>
+      <GenUIView />
+    </WorkspaceProvider>,
+  );
+  return repository;
+}
+
+function renderGenUIViewWithDemoSeed() {
+  const repository = new MockWorkspaceRepository(createDemoWorkspaceSnapshot('workspace-demo'));
   render(
     <WorkspaceProvider workspaceId="workspace-demo" repository={repository}>
       <GenUIView />
@@ -46,5 +57,17 @@ describe('GenUIView', () => {
     fireEvent.click(await screen.findByText('Agent Roster'));
     await repository.execute({ type: 'agent.task.reassign', workspaceId: 'workspace-demo', agentId: 'agent-1', task: 'Shared task' });
     expect(await screen.findByText('Shared task')).toBeInTheDocument();
+  });
+
+  it('unsticks brainstorm: SME checkpoint and conclude advance to PRD', async () => {
+    const repository = renderGenUIViewWithDemoSeed();
+    expect(await screen.findByText('Agent roster & standby skills')).toBeInTheDocument();
+    await repository.execute({ type: 'sprint.start', workspaceId: 'workspace-demo', brief: 'Test brief' });
+    expect(await screen.findByText('Supervisory Checkpoint · Action Required')).toBeInTheDocument();
+    expect(await screen.findByText('divergent architectural opinions · live debate')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/Option A: Mandate Redis/));
+    expect(await screen.findByText(/Decision ratified by Business SME/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/Conclude Meet 01/));
+    expect(await screen.findByText('Artifacts & acceptance signatures')).toBeInTheDocument();
   });
 });
