@@ -106,7 +106,17 @@ export function WorkspaceShell() {
             <p className="mt-1 text-[13px] text-[#5B5B5B]">Start a sprint from either view to seed agents, meets, and artifacts.</p>
           </div>
         )}
-        {status !== 'loading' && (status === 'ready' || status === 'disconnected' || status === 'stale') && !isEmpty && <ActiveView />}
+        {status !== 'loading' && (status === 'ready' || status === 'disconnected' || status === 'stale') && !isEmpty && (
+          <React.Suspense
+            fallback={(
+              <div role="status" aria-live="polite" className="mx-auto max-w-3xl px-4 py-16 text-center text-[14px] text-[#5B5B5B]">
+                Loading view…
+              </div>
+            )}
+          >
+            <ActiveView />
+          </React.Suspense>
+        )}
         {status !== 'loading' && (status === 'error' || status === 'permission-denied') && (
           <div className="mx-auto max-w-3xl px-4 py-8 text-center text-[13px] text-[#5B5B5B]">
             The workspace could not be loaded. Resolve the issue above to continue.
