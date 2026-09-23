@@ -31,6 +31,17 @@ export function createInitialWorkspaceSnapshot(workspaceId: string): WorkspaceSn
       currentVersion: artifact.currentVersion,
       acceptedCount: artifact.acceptedCount,
       totalRequired: artifact.totalRequired,
+      versions: artifact.versions.map((version) => ({
+        version: version.version,
+        timestamp: version.timestamp,
+        author: version.author,
+        summary: version.summary,
+        diffAdditions: [...version.diffAdditions],
+        diffDeletions: [...version.diffDeletions],
+        acceptedBy: [...version.acceptedBy],
+      })),
+      markdownContent: artifact.markdownContent,
+      acceptedBy: [...artifact.acceptedBy],
     })),
     meets: INITIAL_MEETS.map((meet) => ({
       id: meet.id,

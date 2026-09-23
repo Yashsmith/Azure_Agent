@@ -31,6 +31,16 @@ export interface WorkspaceSkill {
   claimedCount: number;
 }
 
+export interface WorkspaceArtifactVersion {
+  version: string;
+  timestamp: string;
+  author: string;
+  summary: string;
+  diffAdditions: string[];
+  diffDeletions: string[];
+  acceptedBy: string[];
+}
+
 export interface WorkspaceArtifact {
   id: string;
   title: string;
@@ -39,6 +49,12 @@ export interface WorkspaceArtifact {
   currentVersion: string;
   acceptedCount: number;
   totalRequired: number;
+  /** Optional: full version history. Absent in metadata-only snapshots. */
+  versions?: WorkspaceArtifactVersion[];
+  /** Optional: current document body. Absent in metadata-only snapshots. */
+  markdownContent?: string;
+  /** Optional: agent names that accepted the current version. */
+  acceptedBy?: string[];
 }
 
 export interface WorkspaceMeet {

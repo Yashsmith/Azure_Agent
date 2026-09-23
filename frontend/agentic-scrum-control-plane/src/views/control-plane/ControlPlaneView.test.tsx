@@ -4,9 +4,20 @@ import { WorkspaceProvider } from '../../state/WorkspaceProvider';
 import { MockWorkspaceRepository } from '../../repositories/MockWorkspaceRepository';
 import { WorkspaceControlPlaneView } from './WorkspaceControlPlaneView';
 import { activeSprintWorkspace } from '../../test/fixtures/workspaces';
+import { createDemoWorkspaceSnapshot } from '../../adapters/createDemoWorkspaceSnapshot';
 
 function renderControlPlaneView() {
   const repository = new MockWorkspaceRepository(activeSprintWorkspace('workspace-demo'));
+  render(
+    <WorkspaceProvider workspaceId="workspace-demo" repository={repository}>
+      <WorkspaceControlPlaneView />
+    </WorkspaceProvider>,
+  );
+  return repository;
+}
+
+function renderControlPlaneViewWithDemoSeed() {
+  const repository = new MockWorkspaceRepository(createDemoWorkspaceSnapshot('workspace-demo'));
   render(
     <WorkspaceProvider workspaceId="workspace-demo" repository={repository}>
       <WorkspaceControlPlaneView />
@@ -56,5 +67,15 @@ describe('ControlPlaneView', () => {
     expect(await screen.findByText(/DOCUMENTS \(/)).toBeInTheDocument();
     expect((await screen.findAllByText('PRD.md')).length).toBeGreaterThan(0);
     expect(await screen.findByText(/history unavailable in snapshot/)).toBeInTheDocument();
+  });
+
+  it('renders full version history and document body from rich snapshots', async () => {
+    renderControlPlaneViewWithDemoSeed();
+    fireEvent.click(screen.getByLabelText('Artifacts — PRD & Architecture Diffs'));
+    expect((await screen.findAllByText('Product Requirement Document')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('v2.3')).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/Diff Summary for v2.3/)).toBeInTheDocument();
+    expect(await screen.findByText(/Real-time Clearing/)).toBeInTheDocument();
+    expect(screen.queryByText(/history unavailable in snapshot/)).not.toBeInTheDocument();
   });
 });

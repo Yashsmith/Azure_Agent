@@ -28,6 +28,12 @@ expects a `CommandResult` (`{ accepted, commandId }`) as JSON.
 `Workspace snapshot failed validation` when required fields are missing —
 the backend must return the full shape, never partial entities.
 
+Artifact richness is progressive: `versions[]` (per-version author, timestamp,
+summary, diff additions/deletions, sign-offs), `markdownContent`, and
+`acceptedBy` are **optional**. Metadata-only artifacts render with graceful
+fallbacks; backends can start metadata-only and add bodies later without a
+contract bump.
+
 ## Events
 
 Every event carries `{ eventId, workspaceId, occurredAt, version }` plus a

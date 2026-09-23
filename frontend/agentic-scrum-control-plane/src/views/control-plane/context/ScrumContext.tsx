@@ -136,9 +136,17 @@ function toRichArtifact(item: WorkspaceArtifact): Artifact {
     status: item.status,
     acceptedCount: item.acceptedCount,
     totalRequired: item.totalRequired,
-    acceptedBy: [],
-    versions: [],
-    markdownContent: '',
+    acceptedBy: [...(item.acceptedBy ?? [])],
+    versions: (item.versions ?? []).map((version) => ({
+      version: version.version,
+      timestamp: version.timestamp,
+      author: version.author,
+      summary: version.summary,
+      diffAdditions: [...version.diffAdditions],
+      diffDeletions: [...version.diffDeletions],
+      acceptedBy: [...version.acceptedBy],
+    })),
+    markdownContent: item.markdownContent ?? '',
   };
 }
 
@@ -305,7 +313,7 @@ export const ScrumProvider: React.FC<{ children: React.ReactNode; sharedWorkspac
       return sharedWorkspace.artifacts.map(item => {
         const existing = previous.get(item.id);
         const rich = toRichArtifact(item);
-        return existing ? { ...existing, status: rich.status, acceptedCount: rich.acceptedCount, totalRequired: rich.totalRequired, currentVersion: rich.currentVersion } : rich;
+        return existing ? { ...existing, status: rich.status, acceptedCount: rich.acceptedCount, totalRequired: rich.totalRequired, currentVersion: rich.currentVersion, versions: rich.versions, markdownContent: rich.markdownContent, acceptedBy: rich.acceptedBy } : rich;
       });
     });
     setSprints(prev => {
