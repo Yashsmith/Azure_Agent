@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Check, Download, RotateCcw, FileText, CheckCircle2 } from 'lucide-react';
-import { ARTIFACTS_LIST } from '../../data/mockData';
+import { ARTIFACTS_LIST } from '../../views/GenUIView/referenceArtifacts';
 
 interface ShipPhaseProps {
   onRestartSprint: () => void;

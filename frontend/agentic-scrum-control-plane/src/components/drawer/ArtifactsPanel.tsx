@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
-import { ARTIFACTS_LIST } from '../../data/mockData';
+import React, { useState, useEffect, useRef } from 'react';
+import { ARTIFACTS_LIST } from '../../views/GenUIView/referenceArtifacts';
 import { FileText, Download, Code, Check } from 'lucide-react';
 import { ArtifactFile } from '../../types';
 
 export const ArtifactsPanel: React.FC = () => {
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactFile>(ARTIFACTS_LIST[0]);
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(selectedArtifact.content);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (

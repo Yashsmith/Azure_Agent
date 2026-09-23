@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileText, ArrowRight, Sparkles, FolderUp } from 'lucide-react';
 import { Agent } from '../../types';
@@ -34,10 +34,16 @@ export const KickoffPhase: React.FC<KickoffPhaseProps> = ({ agents, onStartMeet 
   ]);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (submitTimer.current) clearTimeout(submitTimer.current);
+  }, []);
 
   const handleStart = () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    if (submitTimer.current) clearTimeout(submitTimer.current);
+    submitTimer.current = setTimeout(() => {
       onStartMeet(PRESET_BRIEFS[activePreset]?.title || 'System SDLC Sprint', briefText);
     }, 450);
   };

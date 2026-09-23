@@ -9,6 +9,9 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // Single React copy across the host and the sibling Control Plane tree.
+        'react': path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         'motion': path.resolve(__dirname, 'node_modules/motion'),
         'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
       },
@@ -19,6 +22,12 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test/setup.ts'],
+      exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     },
   };
 });

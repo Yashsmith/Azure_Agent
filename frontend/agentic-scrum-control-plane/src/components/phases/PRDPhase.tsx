@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, UserCheck, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Agent } from '../../types';
@@ -19,6 +19,11 @@ export const PRDPhase: React.FC<PRDPhaseProps> = ({ agents, onAcceptAllAndAdvanc
   ]);
   const [isHaloActive, setIsHaloActive] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const choreographyTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+  useEffect(() => () => {
+    choreographyTimers.current.forEach((timer) => clearTimeout(timer));
+  }, []);
 
   const totalAgents = agents.length || 6;
   const isFullyAccepted = acceptedAgentIds.length >= totalAgents;
@@ -31,13 +36,13 @@ export const PRDPhase: React.FC<PRDPhaseProps> = ({ agents, onAcceptAllAndAdvanc
       setAcceptedAgentIds((prev) => [...prev, pendingAgent.id]);
       // Trigger the 900ms connecting halo around the card
       setIsHaloActive(true);
-      setTimeout(() => {
+      choreographyTimers.current.push(setTimeout(() => {
         setIsHaloActive(false);
         setIsAdvancing(true);
-        setTimeout(() => {
+        choreographyTimers.current.push(setTimeout(() => {
           onAcceptAllAndAdvance();
-        }, 800);
-      }, 950);
+        }, 800));
+      }, 950));
     }
   };
 
